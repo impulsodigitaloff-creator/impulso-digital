@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Impulso Digital CRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<div id="toast-container" class="toast-container"></div>
+
+<!-- ========== LOGIN ========== -->
+<div id="login-view" class="login-container">
+  <div class="login-box">
+    <div class="login-logo">ID</div>
+    <h1>Impulso Digital</h1>
+    <p>CRM Interno</p>
+    <div id="login-error" class="login-error"></div>
+    <form id="login-form">
+      <div class="form-group">
+        <label>Usuario</label>
+        <input type="text" id="login-username" placeholder="Ingresa tu usuario" autocomplete="username" required>
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="login-password" placeholder="Ingresa tu contraseña" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-lg btn-block">Iniciar Sesión</button>
+    </form>
+  </div>
+</div>
+
+<!-- ========== DASHBOARD ========== -->
+<div id="app-view" class="app hidden">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">ID</div>
+      <div class="sidebar-brand">
+        <h2>Impulso Digital</h2>
+        <span>CRM</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-view="dashboard">
+        <span class="icon">&#9632;</span> Dashboard
+      </div>
+      <div class="nav-item" data-view="clientes">
+        <span class="icon">&#9635;</span> Clientes
+        <span id="clientes-badge" class="badge" style="display:none"></span>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <strong id="sidebar-username">Augusto</strong>
+        <span>Administrador</span>
+      </div>
+      <button id="logout-btn" class="btn btn-sm btn-secondary" title="Cerrar sesión">Salir</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <header class="main-header">
+      <div>
+        <button id="mobile-toggle" class="mobile-toggle">&#9776;</button>
+        <h1 id="view-title">Dashboard</h1>
+        <p id="view-subtitle">Resumen general de Impulso Digital</p>
+      </div>
+      <div id="header-actions"></div>
+    </header>
+
+    <div id="main-content" class="main-content"></div>
+  </main>
+</div>
+
+<!-- ========== MODAL CLIENTE ========== -->
+<div id="modal-cliente" class="modal-overlay">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h2 id="modal-cliente-title">Nuevo Cliente</h2>
+      <button class="modal-close" onclick="closeModal('modal-cliente')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-cliente">
+        <input type="hidden" id="cliente-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Empresa *</label>
+            <input type="text" id="c-empresa" required>
+          </div>
+          <div class="form-group">
+            <label>Persona de Contacto</label>
+            <input type="text" id="c-contacto">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Teléfono</label>
+            <input type="text" id="c-telefono">
+          </div>
+          <div class="form-group">
+            <label>WhatsApp</label>
+            <input type="text" id="c-whatsapp">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="c-email">
+          </div>
+          <div class="form-group">
+            <label>Dominio Web</label>
+            <input type="text" id="c-dominio" placeholder="ejemplo.com">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Hosting</label>
+            <input type="text" id="c-hosting" placeholder="Proveedor de hosting">
+          </div>
+          <div class="form-group">
+            <label>Monto Mensual ($)</label>
+            <input type="number" id="c-monto" step="0.01" min="0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fecha de Inicio</label>
+            <input type="date" id="c-fecha-inicio">
+          </div>
+          <div class="form-group">
+            <label>Fecha de Vencimiento</label>
+            <input type="date" id="c-fecha-vencimiento">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Estado</label>
+            <select id="c-estado">
+              <option value="Activo">Activo</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="Suspendido">Suspendido</option>
+              <option value="Vencido">Vencido</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Responsable</label>
+            <select id="c-responsable">
+              <option value="Augusto">Augusto</option>
+              <option value="Socio">Socio</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Notas Internas</label>
+          <textarea id="c-notas" rows="3" placeholder="Información relevante sobre el cliente..."></textarea>
+        </div>
+      </form>
+
+      <div id="archivos-section" style="display:none; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+        <h3 style="font-size:14px; font-weight:600; margin-bottom:12px;">Archivos Adjuntos</h3>
+        <div id="files-list" class="files-list"></div>
+        <div style="margin-top:12px;">
+          <input type="file" id="file-upload" multiple accept=".pdf,.jpg,.jpeg,.png,.gif,.svg" style="display:none">
+          <button class="btn btn-sm btn-secondary" onclick="document.getElementById('file-upload').click()">Subir Archivos</button>
+          <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">PDF, JPG, PNG, GIF, SVG (máx 10MB c/u)</span>
+        </div>
+      </div>
+
+      <div id="pagos-section" style="display:none; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+        <h3 style="font-size:14px; font-weight:600; margin-bottom:12px;">Historial de Pagos</h3>
+        <div id="pagos-list" class="payments-list"></div>
+        <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+          <input type="number" id="nuevo-pago-monto" placeholder="Monto $" style="padding:8px 12px; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; color:var(--text-primary); width:120px; font-size:13px;">
+          <input type="month" id="nuevo-pago-mes" style="padding:8px 12px; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; color:var(--text-primary); font-size:13px;">
+          <button class="btn btn-sm btn-success" onclick="registrarPago()">Registrar Pago</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-cliente')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCliente()">Guardar Cliente</button>
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
