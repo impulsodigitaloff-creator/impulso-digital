@@ -38,6 +38,9 @@ db.exec(`
     estado TEXT DEFAULT 'Activo',
     responsable TEXT DEFAULT 'Augusto',
     notas TEXT DEFAULT '',
+    panel_id INTEGER DEFAULT NULL,
+    panel_email TEXT DEFAULT '',
+    panel_password TEXT DEFAULT '',
     created_at DATETIME DEFAULT (datetime('now', '-3 hours')),
     updated_at DATETIME DEFAULT (datetime('now', '-3 hours'))
   );
@@ -50,6 +53,8 @@ db.exec(`
     created_at DATETIME DEFAULT (datetime('now', '-3 hours')),
     FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
   );
+
+
 
   CREATE TABLE IF NOT EXISTS files (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -149,8 +154,13 @@ function getDashboardStats() {
   return { clientesActivos, ingresosMensuales, clientesPorVencer, pagosPendientes, totalClientes };
 }
 
+function setClientePanel(id, panelId, panelEmail, panelPassword) {
+  db.prepare('UPDATE clients SET panel_id=?, panel_email=?, panel_password=? WHERE id=?').run(panelId, panelEmail, panelPassword, id);
+}
+
 module.exports = {
   getUserByUsername,
+  setClientePanel,
   getAllClientes,
   getClienteById,
   searchClientes,

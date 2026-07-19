@@ -34,12 +34,14 @@ function showView(view) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
   const titles = {
     dashboard: ['Dashboard', 'Resumen general de Impulso Digital'],
-    clientes: ['Clientes', 'Gestión de clientes y pagos']
+    clientes: ['Clientes', 'Gestión de clientes y pagos'],
+    config: ['Configuración', 'Administrá los paneles de tus clientes']
   };
   document.getElementById('view-title').textContent = titles[view][0];
   document.getElementById('view-subtitle').textContent = titles[view][1];
   if (view === 'dashboard') renderDashboard();
   else if (view === 'clientes') renderClientes();
+  else if (view === 'config') renderConfig();
   if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
 }
 
@@ -302,6 +304,7 @@ function nuevoCliente() {
   document.getElementById('c-responsable').value = 'Augusto';
   document.getElementById('archivos-section').style.display = 'none';
   document.getElementById('pagos-section').style.display = 'none';
+  const ps = document.getElementById('panel-section'); if (ps) ps.style.display = 'none';
   openModal('modal-cliente');
 }
 
@@ -360,6 +363,8 @@ async function guardarCliente() {
 
   if (!data.empresa) { toast('El nombre de la empresa es obligatorio', 'error'); return; }
 
+  const btn = document.querySelector('#modal-cliente .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
   try {
     if (state.editingId) {
       await api(`/api/clientes/${state.editingId}`, { method: 'PUT', body: JSON.stringify(data) });
@@ -372,6 +377,8 @@ async function guardarCliente() {
     renderClientes();
   } catch (err) {
     toast(err.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Guardar Cliente'; }
   }
 }
 
@@ -472,6 +479,101 @@ function verPagos(id) {
 }
 
 // ==================== INIT ====================
+
+// ==================== CONFIG (PANEL MANAGEMENT) ====================
+
+async function renderConfig() {
+  const el = document.getElementById('main-content');
+  document.getElementById('header-actions').innerHTML = '';
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const clients = await api('/api/clientes');
+    el.innerHTML = `
+      <h2 style="font-size:18px;font-weight:600;margin-bottom:16px;">📱 Gestión de Paneles Cliente</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Generá links de acceso directo al panel para tus clientes.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;">
+        ${clients.map(c => `
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
+              <div>
+                <strong style="font-size:15px;">${c.empresa}</strong>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${c.contacto || ''} ${c.telefono || ''}</div>
+              </div>
+              ${c.panel_id
+                ? '<span style="background:rgba(48,209,88,0.15);color:#30d158;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:500;">Panel activo</span>'
+                : '<span style="background:rgba(255,214,10,0.15);color:#ffd60a;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:500;">Sin panel</span>'}
+            </div>
+            <div id="creds-${c.id}" style="font-size:13px;background:var(--bg-input);padding:10px 14px;border-radius:8px;margin-bottom:12px;${c.panel_email ? '' : 'display:none;'}">
+              <div>📧 ${c.panel_email || ''}</div>
+              <div>🔑 ${c.panel_password || ''}</div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-sm btn-primary" onclick="abrirPanelSetup('${c.id}', '${c.empresa.replace(/'/g,"\\'")}', ${c.panel_id || 0})">🔑 Acceso</button>
+              <button class="btn btn-sm btn-success" onclick="window.open('http://localhost:3001','_blank')">🔗 Ir al Panel</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state"><p>Error: ${err.message}</p></div>`;
+  }
+}
+
+function abrirPanelSetup(id, empresa, panelId) {
+  const el = document.getElementById('ps-result');
+  el.style.display = 'none';
+  if (panelId) {
+    // Ya tiene panel: mostrar link directamente
+    api(`/api/clientes/${id}`).then(c => {
+      document.getElementById('ps-client-id').value = id;
+      document.getElementById('ps-email').value = c.panel_email;
+      document.getElementById('ps-password').value = c.panel_password;
+      document.getElementById('modal-panel-title').textContent = 'Acceso — ' + empresa;
+      document.getElementById('ps-footer').style.display = 'flex';
+      openModal('modal-panel-setup');
+    });
+  } else {
+    document.getElementById('ps-client-id').value = id;
+    document.getElementById('ps-email').value = empresa.toLowerCase().replace(/[^a-z0-9]/g,'') + '@panel.cliente';
+    document.getElementById('ps-password').value = 'panel123';
+    document.getElementById('modal-panel-title').textContent = 'Nuevo acceso — ' + empresa;
+    document.getElementById('ps-footer').style.display = 'flex';
+    openModal('modal-panel-setup');
+  }
+}
+
+async function savePanelSetup() {
+  const clienteId = document.getElementById('ps-client-id').value;
+  const email = document.getElementById('ps-email').value.trim();
+  const password = document.getElementById('ps-password').value.trim();
+  if (!email || !password) { toast('Email y contraseña requeridos', 'error'); return; }
+
+  const btn = document.querySelector('#modal-panel-setup .btn-primary');
+  btn.disabled = true;
+  try {
+    // Get current client data to check if panel exists
+    const client = await api(`/api/clientes/${clienteId}`);
+    let result;
+    if (client.panel_id) {
+      btn.textContent = 'Actualizando...';
+      result = await api(`/api/clientes/${clienteId}/panel`, { method: 'PUT', body: JSON.stringify({ email, password }) });
+    } else {
+      btn.textContent = 'Creando...';
+      result = await api(`/api/clientes/${clienteId}/panel`, { method: 'POST', body: JSON.stringify({ email, password }) });
+    }
+
+    const link = 'http://localhost:3001/auto-login?email=' + encodeURIComponent(result.email || email) + '&password=' + encodeURIComponent(password);
+    document.getElementById('ps-result-email').textContent = result.email || email;
+    document.getElementById('ps-result-pass').textContent = password;
+    document.getElementById('ps-result').style.display = 'block';
+    document.getElementById('ps-footer').style.display = 'none';
+    renderConfig();
+  } catch (err) {
+    toast(err.message, 'error');
+    btn.disabled = false; btn.textContent = 'Guardar';
+  }
+}
 
 document.addEventListener('DOMContentLoaded', checkSession);
 

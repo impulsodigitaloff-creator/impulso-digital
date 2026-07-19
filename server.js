@@ -178,6 +178,62 @@ app.delete('/api/archivos/:id', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// Panel Cliente: crear acceso para un cliente del CRM
+app.post('/api/clientes/:id/panel', requireAuth, async (req, res) => {
+  const cliente = db.getClienteById(req.params.id);
+  if (!cliente) return res.status(404).json({ error: 'Cliente no encontrado' });
+  if (cliente.panel_id) return res.status(400).json({ error: 'Ya tiene acceso a Panel Cliente' });
+
+  const { email: bodyEmail, password } = req.body;
+  const email = bodyEmail || (cliente.email || cliente.empresa.toLowerCase().replace(/[^a-z0-9]/g, '') + '@panel.cliente').trim();
+  const panelPassword = password || 'panel123';
+
+  try {
+    const fetchUrl = process.env.PANEL_API_URL || 'http://localhost:3001';
+    const apiKey = process.env.PANEL_API_KEY;
+
+    const response = await fetch(`${fetchUrl}/api/businesses`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+      body: JSON.stringify({ name: cliente.empresa, contact: cliente.contacto, phone: cliente.telefono || cliente.whatsapp, email, password: panelPassword })
+    });
+    const result = await response.json();
+    if (!result.success) return res.status(400).json({ error: result.error });
+    db.setClientePanel(cliente.id, result.id, email, panelPassword);
+    res.json({ success: true, email, password: panelPassword, id: result.id });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al conectar con Panel Cliente: ' + err.message });
+  }
+});
+
+// Panel Cliente: actualizar referencia y credenciales en panelcliente
+app.put('/api/clientes/:id/panel', requireAuth, async (req, res) => {
+  const cliente = db.getClienteById(req.params.id);
+  if (!cliente) return res.status(404).json({ error: 'Cliente no encontrado' });
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
+  // Si tiene panel_id, actualizar también en panelcliente
+  if (cliente.panel_id) {
+    try {
+      const fetchUrl = process.env.PANEL_API_URL || 'http://localhost:3001';
+      const apiKey = process.env.PANEL_API_KEY;
+      const r = await fetch(`${fetchUrl}/api/businesses/${cliente.panel_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+        body: JSON.stringify({ name: cliente.empresa, contact: cliente.contacto, phone: cliente.telefono || cliente.whatsapp, email, password })
+      });
+      const result = await r.json();
+      if (!result.success) return res.status(400).json({ error: result.error || 'Error al actualizar en Panel Cliente' });
+    } catch (err) {
+      return res.status(500).json({ error: 'Error al conectar con Panel Cliente: ' + err.message });
+    }
+  }
+  db.setClientePanel(cliente.id, cliente.panel_id || 0, email, password);
+  res.json({ success: true, email, password });
+});
+
+
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

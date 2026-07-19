@@ -55,6 +55,9 @@
         <span class="icon">&#9635;</span> Clientes
         <span id="clientes-badge" class="badge" style="display:none"></span>
       </div>
+      <div class="nav-item" data-view="config">
+        <span class="icon">&#9881;</span> Configuración
+      </div>
     </nav>
 
     <div class="sidebar-footer">
@@ -184,10 +187,54 @@
           <button class="btn btn-sm btn-success" onclick="registrarPago()">Registrar Pago</button>
         </div>
       </div>
+
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-cliente')">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarCliente()">Guardar Cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PANEL SETUP -->
+<div id="modal-panel-setup" class="modal-overlay">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h2 id="modal-panel-title">Generar Acceso al Panel</h2>
+      <button class="modal-close" onclick="closeModal('modal-panel-setup')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="ps-client-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Email de acceso *</label>
+          <input type="email" id="ps-email" required>
+        </div>
+        <div class="form-group">
+          <label>Contraseña *</label>
+          <input type="text" id="ps-password" required>
+        </div>
+      </div>
+      <div id="ps-result" style="display:none;margin-top:16px;background:rgba(48,209,88,0.1);border:1px solid rgba(48,209,88,0.3);border-radius:8px;padding:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">✅ Datos de acceso</div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>Email:</strong> <span id="ps-result-email"></span></div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>Contraseña:</strong> <span id="ps-result-pass"></span></div>
+        <div style="font-size:13px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(48,209,88,0.2);">
+          <strong>Link del panel:</strong><br>
+          <span id="ps-result-link">http://localhost:3001</span>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--text-muted);">
+          🔐 El cliente ingresa manual con su email y contraseña
+        </div>
+        <div style="margin-top:10px;">
+          <button class="btn btn-sm btn-primary" onclick="window.open('http://localhost:3001','_blank')">Abrir Panel</button>
+          <button class="btn btn-sm btn-secondary" style="margin-left:6px;" onclick="closeModal('modal-panel-setup')">Cerrar</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" id="ps-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-panel-setup')">Cancelar</button>
+      <button class="btn btn-primary" onclick="savePanelSetup()">Guardar</button>
     </div>
   </div>
 </div>

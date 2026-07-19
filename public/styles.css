@@ -820,6 +820,23 @@ tbody td .cliente-contacto {
   to { transform: rotate(360deg); }
 }
 
+/* ===== SETTINGS ITEMS (for panel setup) ===== */
+.settings-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.settings-item .item-info { font-size: 14px; }
+.settings-item .item-info span { color: var(--text-muted); font-size: 12px; }
+.add-bar {
+  display: flex; gap: 8px; align-items: center; margin-top: 12px;
+}
+.add-bar input, .add-bar select {
+  padding: 8px 12px; background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text-primary); font-size: 13px; font-family: inherit; outline: none;
+}
+.add-bar input:focus { border-color: var(--border-focus); }
+
 /* ===== TOOLTIP ===== */
 .truncate {
   max-width: 160px;
