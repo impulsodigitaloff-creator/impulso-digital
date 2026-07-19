@@ -221,13 +221,13 @@
         <div style="font-size:13px;margin-bottom:4px;"><strong>Contraseña:</strong> <span id="ps-result-pass"></span></div>
         <div style="font-size:13px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(48,209,88,0.2);">
           <strong>Link del panel:</strong><br>
-          <span id="ps-result-link">http://localhost:3001</span>
+          <span id="ps-result-link"></span>
         </div>
         <div style="margin-top:10px;font-size:12px;color:var(--text-muted);">
           🔐 El cliente ingresa manual con su email y contraseña
         </div>
         <div style="margin-top:10px;">
-          <button class="btn btn-sm btn-primary" onclick="window.open('http://localhost:3001','_blank')">Abrir Panel</button>
+          <button class="btn btn-sm btn-primary" onclick="abrirPanelCliente()">Abrir Panel</button>
           <button class="btn btn-sm btn-secondary" style="margin-left:6px;" onclick="closeModal('modal-panel-setup')">Cerrar</button>
         </div>
       </div>

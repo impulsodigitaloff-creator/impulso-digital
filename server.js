@@ -105,6 +105,10 @@ app.get('/api/session', (req, res) => {
   }
 });
 
+app.get('/api/config', (req, res) => {
+  res.json({ panelUrl: PANEL_ORIGIN });
+});
+
 app.get('/api/dashboard', requireAuth, (req, res) => {
   const stats = db.getDashboardStats();
   res.json(stats);

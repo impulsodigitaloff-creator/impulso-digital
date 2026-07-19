@@ -78,7 +78,14 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
 async function checkSession() {
   try {
     const data = await api('/api/session');
-    if (data.authenticated) initApp(data.user);
+    if (data.authenticated) {
+      // Cargar URL del panel
+      try {
+        const config = await api('/api/config');
+        window.PANEL_URL = config.panelUrl;
+      } catch { window.PANEL_URL = 'https://panel-cliente-production.up.railway.app'; }
+      initApp(data.user);
+    }
   } catch (e) { /* no session */ }
 }
 
@@ -509,7 +516,7 @@ async function renderConfig() {
             </div>
             <div style="display:flex;gap:8px;">
               <button class="btn btn-sm btn-primary" onclick="abrirPanelSetup('${c.id}', '${c.empresa.replace(/'/g,"\\'")}', ${c.panel_id || 0})">🔑 Acceso</button>
-              <button class="btn btn-sm btn-success" onclick="window.open('http://localhost:3001','_blank')">🔗 Ir al Panel</button>
+              <button class="btn btn-sm btn-success" onclick="abrirPanelCliente()">Ir al Panel</button>
             </div>
           </div>
         `).join('')}
@@ -563,9 +570,10 @@ async function savePanelSetup() {
       result = await api(`/api/clientes/${clienteId}/panel`, { method: 'POST', body: JSON.stringify({ email, password }) });
     }
 
-    const link = 'http://localhost:3001/auto-login?email=' + encodeURIComponent(result.email || email) + '&password=' + encodeURIComponent(password);
+    const link = window.PANEL_URL + '/auto-login?email=' + encodeURIComponent(result.email || email) + '&password=' + encodeURIComponent(password);
     document.getElementById('ps-result-email').textContent = result.email || email;
     document.getElementById('ps-result-pass').textContent = password;
+    document.getElementById('ps-result-link').textContent = window.PANEL_URL || 'https://panel-cliente-production.up.railway.app';
     document.getElementById('ps-result').style.display = 'block';
     document.getElementById('ps-footer').style.display = 'none';
     renderConfig();
@@ -573,6 +581,11 @@ async function savePanelSetup() {
     toast(err.message, 'error');
     btn.disabled = false; btn.textContent = 'Guardar';
   }
+}
+
+function abrirPanelCliente() {
+  const url = window.PANEL_URL || 'https://panel-cliente-production.up.railway.app';
+  window.open(url, '_blank');
 }
 
 document.addEventListener('DOMContentLoaded', checkSession);
