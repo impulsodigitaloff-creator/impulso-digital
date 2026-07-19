@@ -68,6 +68,11 @@ db.exec(`
   );
 `);
 
+// Migración: agregar columnas panel si no existen
+try { db.exec('ALTER TABLE clients ADD COLUMN panel_id INTEGER DEFAULT NULL'); } catch (e) {}
+try { db.exec('ALTER TABLE clients ADD COLUMN panel_email TEXT DEFAULT \'\''); } catch (e) {}
+try { db.exec('ALTER TABLE clients ADD COLUMN panel_password TEXT DEFAULT \'\''); } catch (e) {}
+
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
 if (userCount.count === 0) {
   const hash = (pw) => bcrypt.hashSync(pw, 10);
