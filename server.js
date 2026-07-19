@@ -18,6 +18,20 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// CORS for panel communication
+const PANEL_ORIGIN = process.env.PANEL_API_URL || 'http://localhost:3001';
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && (origin === PANEL_ORIGIN || origin.endsWith('.up.railway.app') || origin.includes('localhost'))) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
+
 app.use(session({
   secret: process.env.SESSION_SECRET || 'impulso-digital-secret',
   resave: false,
