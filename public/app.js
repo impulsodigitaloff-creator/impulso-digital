@@ -338,7 +338,6 @@ async function editarCliente(id) {
     document.getElementById('archivos-section').style.display = 'block';
     document.getElementById('pagos-section').style.display = 'block';
     document.getElementById('file-upload').value = '';
-    document.getElementById('file-upload').onchange = () => subirArchivos(id);
     document.getElementById('nuevo-pago-monto').value = c.monto_mensual || '';
     document.getElementById('nuevo-pago-mes').value = '';
     document.getElementById('nuevo-pago-monto').dataset.clientId = id;
@@ -516,7 +515,7 @@ async function renderConfig() {
             </div>
             <div style="display:flex;gap:8px;">
               <button class="btn btn-sm btn-primary" onclick="abrirPanelSetup('${c.id}', '${c.empresa.replace(/'/g,"\\'")}', ${c.panel_id || 0})">🔑 Acceso</button>
-              <button class="btn btn-sm btn-success" onclick="abrirPanelCliente()">Ir al Panel</button>
+              <button class="btn btn-sm btn-success" onclick="abrirPanelCliente('${(c.panel_email || '').replace(/'/g,"\\'")}', '${(c.panel_password || '').replace(/'/g,"\\'")}')">Ir al Panel</button>
             </div>
           </div>
         `).join('')}
@@ -573,7 +572,7 @@ async function savePanelSetup() {
     const link = window.PANEL_URL + '/auto-login?email=' + encodeURIComponent(result.email || email) + '&password=' + encodeURIComponent(password);
     document.getElementById('ps-result-email').textContent = result.email || email;
     document.getElementById('ps-result-pass').textContent = password;
-    document.getElementById('ps-result-link').textContent = window.PANEL_URL || 'https://panel-cliente-production.up.railway.app';
+    document.getElementById('ps-result-link').textContent = link;
     document.getElementById('ps-result').style.display = 'block';
     document.getElementById('ps-footer').style.display = 'none';
     renderConfig();
@@ -583,9 +582,13 @@ async function savePanelSetup() {
   }
 }
 
-function abrirPanelCliente() {
+function abrirPanelCliente(email, password) {
   const url = window.PANEL_URL || 'https://panel-cliente-production.up.railway.app';
-  window.open(url, '_blank');
+  if (email && password) {
+    window.open(url + '/auto-login?email=' + encodeURIComponent(email) + '&password=' + encodeURIComponent(password), '_blank');
+  } else {
+    window.open(url, '_blank');
+  }
 }
 
 document.addEventListener('DOMContentLoaded', checkSession);

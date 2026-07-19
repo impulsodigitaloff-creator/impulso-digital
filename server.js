@@ -204,7 +204,7 @@ app.post('/api/clientes/:id/panel', requireAuth, async (req, res) => {
 
   const { email: bodyEmail, password } = req.body;
   const email = bodyEmail || (cliente.email || cliente.empresa.toLowerCase().replace(/[^a-z0-9]/g, '') + '@panel.cliente').trim();
-  const panelPassword = password || 'panel123';
+  const panelPassword = password || Math.random().toString(36).slice(2, 10);
 
   try {
     const fetchUrl = process.env.PANEL_API_URL || 'http://localhost:3001';
