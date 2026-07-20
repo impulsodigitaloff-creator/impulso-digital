@@ -12,6 +12,7 @@ function escapeHtml(text) {
 
 async function api(path, opts = {}) {
   const res = await fetch(path, {
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...opts.headers },
     ...opts
   });
@@ -417,7 +418,7 @@ async function subirArchivos(clientId) {
   const formData = new FormData();
   for (const f of input.files) formData.append('archivos', f);
   try {
-    const data = await fetch(`/api/clientes/${clientId}/archivos`, { method: 'POST', body: formData });
+    const data = await fetch(`/api/clientes/${clientId}/archivos`, { method: 'POST', credentials: 'include', body: formData });
     const res = await data.json();
     if (res.success) { toast('Archivos subidos', 'success'); cargarArchivos(clientId); }
     else throw new Error(res.error);
