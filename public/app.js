@@ -1,5 +1,15 @@
 let state = { currentView: 'dashboard', clients: [], editingId: null };
 
+function escapeHtml(text) {
+  if (text === null || text === undefined) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 async function api(path, opts = {}) {
   const res = await fetch(path, {
     headers: { 'Content-Type': 'application/json', ...opts.headers },
@@ -129,7 +139,7 @@ async function renderDashboard() {
         const cls = crit ? 'danger' : 'warning';
         alertHtml += `<div class="alerta-item ${cls}">
           <span class="alerta-icon">⏰</span>
-          <span class="alerta-text"><strong>${c.empresa}</strong> — vence en ${c.proximoVencer} día${c.proximoVencer !== 1 ? 's' : ''}</span>
+          <span class="alerta-text"><strong>${escapeHtml(c.empresa)}</strong> — vence en ${c.proximoVencer} día${c.proximoVencer !== 1 ? 's' : ''}</span>
           <span class="alerta-dias ${crit ? 'critico' : ''}">${c.proximoVencer}d</span>
         </div>`;
       });
@@ -173,7 +183,7 @@ async function renderDashboard() {
       </div>
     `;
   } catch (err) {
-    el.innerHTML = `<div class="empty-state"><p>Error al cargar dashboard: ${err.message}</p></div>`;
+    el.innerHTML = `<div class="empty-state"><p>Error al cargar dashboard: ${escapeHtml(err.message)}</p></div>`;
   }
 }
 
@@ -188,7 +198,7 @@ async function renderClientes() {
     state.clients = await api('/api/clientes');
     renderClientesTable(el);
   } catch (err) {
-    el.innerHTML = `<div class="empty-state"><p>Error: ${err.message}</p></div>`;
+    el.innerHTML = `<div class="empty-state"><p>Error: ${escapeHtml(err.message)}</p></div>`;
   }
 }
 
@@ -233,17 +243,17 @@ function renderClientesTable(el) {
     <tr>
       <td>
         <div class="cliente-info">
-          <span class="cliente-name">${c.empresa}</span>
-          <span class="cliente-contacto">${c.contacto || c.email || c.dominio ? (c.contacto || c.email || c.dominio) : 'Sin contacto'}</span>
+          <span class="cliente-name">${escapeHtml(c.empresa)}</span>
+          <span class="cliente-contacto">${escapeHtml(c.contacto || c.email || c.dominio || 'Sin contacto')}</span>
         </div>
       </td>
       <td>${badgeEstado(c.estado)}</td>
       <td>
-        ${c.fecha_vencimiento ? c.fecha_vencimiento : '—'}
+        ${c.fecha_vencimiento ? escapeHtml(c.fecha_vencimiento) : '—'}
         ${getAlert(c)}
       </td>
       <td><span style="font-weight:500;">${fmt(c.monto_mensual)}</span></td>
-      <td><span style="font-size:12px;">${c.responsable}</span></td>
+      <td><span style="font-size:12px;">${escapeHtml(c.responsable)}</span></td>
       <td>
         <div style="display:flex;gap:4px;">
           <button class="btn btn-sm btn-secondary" onclick="editarCliente(${c.id})" title="Editar">✏️</button>
@@ -259,7 +269,7 @@ function renderClientesTable(el) {
       <div class="section-actions" style="flex:1;">
         <div class="search-box" style="flex:1;max-width:320px;">
           <span class="search-icon">🔍</span>
-          <input type="text" id="search-input" placeholder="Buscar clientes..." value="${currentSearch}" oninput="buscarClientes()">
+          <input type="text" id="search-input" placeholder="Buscar clientes..." value="${escapeHtml(currentSearch)}" oninput="buscarClientes()">
         </div>
         <div class="filter-group">
           <button class="filter-btn ${!currentFilter ? 'active' : ''}" onclick="filtrarClientes('')">Todos</button>
@@ -425,7 +435,7 @@ async function cargarArchivos(clientId) {
     el.innerHTML = archivos.map(a => `
       <div class="file-item">
         <span>${a.mimetype.includes('pdf') ? '📄' : a.mimetype.includes('image') ? '🖼️' : '📎'}</span>
-        <a href="${a.url}" target="_blank" title="${a.original_name}">${a.original_name.length > 20 ? a.original_name.slice(0, 20) + '...' : a.original_name}</a>
+        <a href="${escapeHtml(a.url)}" target="_blank" title="${escapeHtml(a.original_name)}">${escapeHtml(a.original_name.length > 20 ? a.original_name.slice(0, 20) + '...' : a.original_name)}</a>
         <button class="btn btn-sm btn-danger" onclick="eliminarArchivo(${a.id}, ${clientId})" style="padding:2px 6px;font-size:10px;">✕</button>
       </div>
     `).join('');
@@ -451,7 +461,7 @@ async function cargarPagos(clientId) {
       <div class="payment-item">
         <div class="payment-info">
           <span class="payment-monto">$${Number(p.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
-          <span class="payment-mes">${p.mes_correspondiente || '—'}</span>
+          <span class="payment-mes">${escapeHtml(p.mes_correspondiente || '—')}</span>
         </div>
         <span class="payment-fecha">${new Date(p.created_at).toLocaleDateString('es-AR')}</span>
       </div>
@@ -502,27 +512,27 @@ async function renderConfig() {
           <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;">
             <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
               <div>
-                <strong style="font-size:15px;">${c.empresa}</strong>
-                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${c.contacto || ''} ${c.telefono || ''}</div>
+                <strong style="font-size:15px;">${escapeHtml(c.empresa)}</strong>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${escapeHtml(c.contacto || '')} ${escapeHtml(c.telefono || '')}</div>
               </div>
               ${c.panel_id
                 ? '<span style="background:rgba(48,209,88,0.15);color:#30d158;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:500;">Panel activo</span>'
                 : '<span style="background:rgba(255,214,10,0.15);color:#ffd60a;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:500;">Sin panel</span>'}
             </div>
             <div id="creds-${c.id}" style="font-size:13px;background:var(--bg-input);padding:10px 14px;border-radius:8px;margin-bottom:12px;${c.panel_email ? '' : 'display:none;'}">
-              <div>📧 ${c.panel_email || ''}</div>
-              <div>🔑 ${c.panel_password || ''}</div>
+              <div>📧 ${escapeHtml(c.panel_email || '')}</div>
+              <div>🔑 ${escapeHtml(c.panel_password || '')}</div>
             </div>
             <div style="display:flex;gap:8px;">
-              <button class="btn btn-sm btn-primary" onclick="abrirPanelSetup('${c.id}', '${c.empresa.replace(/'/g,"\\'")}', ${c.panel_id || 0})">🔑 Acceso</button>
-              <button class="btn btn-sm btn-success" onclick="abrirPanelCliente('${(c.panel_email || '').replace(/'/g,"\\'")}', '${(c.panel_password || '').replace(/'/g,"\\'")}')">Ir al Panel</button>
+              <button class="btn btn-sm btn-primary" onclick="abrirPanelSetup('${c.id}', '${escapeHtml(c.empresa).replace(/'/g,"\\'")}', ${c.panel_id || 0})">🔑 Acceso</button>
+              <button class="btn btn-sm btn-success" data-email="${escapeHtml(c.panel_email || '')}" data-password="${escapeHtml(c.panel_password || '')}" onclick="abrirPanelCliente(this)">Ir al Panel</button>
             </div>
           </div>
         `).join('')}
       </div>
     `;
   } catch (err) {
-    el.innerHTML = `<div class="empty-state"><p>Error: ${err.message}</p></div>`;
+    el.innerHTML = `<div class="empty-state"><p>Error: ${escapeHtml(err.message)}</p></div>`;
   }
 }
 
@@ -569,10 +579,12 @@ async function savePanelSetup() {
       result = await api(`/api/clientes/${clienteId}/panel`, { method: 'POST', body: JSON.stringify({ email, password }) });
     }
 
-    const link = window.PANEL_URL + '/auto-login?email=' + encodeURIComponent(result.email || email) + '&password=' + encodeURIComponent(password);
+    const link = window.PANEL_URL || 'https://panel-cliente-production.up.railway.app';
     document.getElementById('ps-result-email').textContent = result.email || email;
     document.getElementById('ps-result-pass').textContent = password;
     document.getElementById('ps-result-link').textContent = link;
+    document.getElementById('ps-result-link').dataset.email = result.email || email;
+    document.getElementById('ps-result-link').dataset.password = password;
     document.getElementById('ps-result').style.display = 'block';
     document.getElementById('ps-footer').style.display = 'none';
     renderConfig();
@@ -582,10 +594,22 @@ async function savePanelSetup() {
   }
 }
 
-function abrirPanelCliente(email, password) {
+function abrirPanelCliente(btn) {
   const url = window.PANEL_URL || 'https://panel-cliente-production.up.railway.app';
+  const email = btn ? btn.dataset.email : '';
+  const password = btn ? btn.dataset.password : '';
   if (email && password) {
-    window.open(url + '/auto-login?email=' + encodeURIComponent(email) + '&password=' + encodeURIComponent(password), '_blank');
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url + '/auto-login';
+    form.target = '_blank';
+    form.style.display = 'none';
+    const iEmail = document.createElement('input'); iEmail.name = 'email'; iEmail.value = email;
+    const iPass = document.createElement('input'); iPass.name = 'password'; iPass.value = password;
+    form.appendChild(iEmail); form.appendChild(iPass);
+    document.body.appendChild(form);
+    form.submit();
+    setTimeout(() => form.remove(), 1000);
   } else {
     window.open(url, '_blank');
   }

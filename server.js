@@ -11,18 +11,19 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
 
-app.set('trust proxy', 1);
+app.set('trust proxy', ['loopback', 'linklocal']);
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // CORS for panel communication
 const PANEL_ORIGIN = process.env.PANEL_API_URL || 'http://localhost:3001';
+const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [PANEL_ORIGIN, 'http://localhost:3001'];
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (origin && (origin === PANEL_ORIGIN || origin.endsWith('.up.railway.app') || origin.includes('localhost'))) {
+  if (origin && allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
@@ -32,8 +33,14 @@ app.use((req, res, next) => {
   next();
 });
 
+const sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret) {
+  console.error('[server] FATAL: SESSION_SECRET no configurado');
+  process.exit(1);
+}
+
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'impulso-digital-secret',
+  secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -41,7 +48,8 @@ app.use(session({
     httpOnly: true,
     sameSite: isProduction ? 'none' : 'lax',
     maxAge: 24 * 60 * 60 * 1000
-  }
+  },
+  name: 'id.sid'
 }));
 
 const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
@@ -53,16 +61,19 @@ const storage = multer.diskStorage({
     cb(null, dir);
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
+    const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`);
   }
 });
+
+const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.pdf', '.svg'];
 const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'image/svg+xml'];
-    if (allowed.includes(file.mimetype)) cb(null, true);
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'image/svg+xml'];
+    if (allowedExtensions.includes(ext) && allowedMimes.includes(file.mimetype)) cb(null, true);
     else cb(new Error('Formato no soportado. Solo PDF, JPG, PNG, GIF, SVG.'));
   }
 });
@@ -74,15 +85,31 @@ function requireAuth(req, res, next) {
   next();
 }
 
+const loginAttempts = new Map();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: 'Usuario y contraseña requeridos' });
   }
-  const user = db.getUserByUsername(username);
+  const cleanUser = username.trim();
+  const key = `${req.ip || req.connection.remoteAddress}:${cleanUser}`;
+  const now = Date.now();
+  const attempts = loginAttempts.get(key);
+  if (attempts && attempts.count >= MAX_LOGIN_ATTEMPTS && now - attempts.last < LOGIN_WINDOW_MS) {
+    return res.status(429).json({ error: 'Demasiados intentos. Probá más tarde.' });
+  }
+  const user = db.getUserByUsername(cleanUser);
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
+    const current = loginAttempts.get(key) || { count: 0, last: now };
+    current.count += 1;
+    current.last = now;
+    loginAttempts.set(key, current);
     return res.status(401).json({ error: 'Credenciales inválidas' });
   }
+  loginAttempts.delete(key);
   req.session.userId = user.id;
   req.session.username = user.username;
   req.session.role = user.role;
@@ -168,7 +195,11 @@ app.post('/api/clientes/:id/pagos', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
-app.post('/api/clientes/:id/archivos', requireAuth, upload.array('archivos', 5), (req, res) => {
+app.post('/api/clientes/:id/archivos', requireAuth, (req, res, next) => {
+  const cliente = db.getClienteById(req.params.id);
+  if (!cliente) return res.status(404).json({ error: 'Cliente no encontrado' });
+  upload.array('archivos', 5)(req, res, next);
+}, (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: 'No se subieron archivos' });
   }
@@ -184,6 +215,8 @@ app.post('/api/clientes/:id/archivos', requireAuth, upload.array('archivos', 5),
 });
 
 app.get('/api/clientes/:id/archivos', requireAuth, (req, res) => {
+  const cliente = db.getClienteById(req.params.id);
+  if (!cliente) return res.status(404).json({ error: 'Cliente no encontrado' });
   const archivos = db.getFilesByCliente(req.params.id);
   res.json(archivos.map(a => ({
     ...a,
@@ -192,7 +225,10 @@ app.get('/api/clientes/:id/archivos', requireAuth, (req, res) => {
 });
 
 app.delete('/api/archivos/:id', requireAuth, (req, res) => {
-  db.deleteFile(req.params.id);
+  const fileId = parseInt(req.params.id, 10);
+  const f = db.getFileById(fileId);
+  if (!f) return res.status(404).json({ error: 'Archivo no encontrado' });
+  db.deleteFile(fileId);
   res.json({ success: true });
 });
 
@@ -215,10 +251,14 @@ app.post('/api/clientes/:id/panel', requireAuth, async (req, res) => {
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
       body: JSON.stringify({ name: cliente.empresa, contact: cliente.contacto, phone: cliente.telefono || cliente.whatsapp, email, password: panelPassword })
     });
+    if (!response.ok) {
+      const text = await response.text();
+      return res.status(502).json({ error: 'Panel Cliente respondió con error: ' + text.slice(0, 200) });
+    }
     const result = await response.json();
     if (!result.success) return res.status(400).json({ error: result.error });
     db.setClientePanel(cliente.id, result.id, email, panelPassword);
-    res.json({ success: true, email, password: panelPassword, id: result.id });
+    res.json({ success: true, email, id: result.id });
   } catch (err) {
     res.status(500).json({ error: 'Error al conectar con Panel Cliente: ' + err.message });
   }
@@ -240,6 +280,10 @@ app.put('/api/clientes/:id/panel', requireAuth, async (req, res) => {
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
         body: JSON.stringify({ name: cliente.empresa, contact: cliente.contacto, phone: cliente.telefono || cliente.whatsapp, email, password })
       });
+      if (!r.ok) {
+        const text = await r.text();
+        return res.status(502).json({ error: 'Panel Cliente respondió con error: ' + text.slice(0, 200) });
+      }
       const result = await r.json();
       if (!result.success) return res.status(400).json({ error: result.error || 'Error al actualizar en Panel Cliente' });
     } catch (err) {
@@ -247,7 +291,7 @@ app.put('/api/clientes/:id/panel', requireAuth, async (req, res) => {
     }
   }
   db.setClientePanel(cliente.id, cliente.panel_id || 0, email, password);
-  res.json({ success: true, email, password });
+  res.json({ success: true, email });
 });
 
 
@@ -271,10 +315,22 @@ function diasEntre(a, b) {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`\n  Impulso Digital CRM corriendo en:`);
   console.log(`  → http://localhost:${PORT}\n`);
-  console.log(`  Usuarios predeterminados:`);
-  console.log(`    augusto / admin123`);
-  console.log(`    socio  / socio123\n`);
 });
+
+function gracefulShutdown(signal) {
+  console.log(`[server] Recibido ${signal}, cerrando graceful...`);
+  server.close(() => {
+    console.log('[server] Servidor cerrado');
+    process.exit(0);
+  });
+  setTimeout(() => {
+    console.error('[server] Forzando cierre por timeout');
+    process.exit(1);
+  }, 10000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

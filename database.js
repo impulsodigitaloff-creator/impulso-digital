@@ -77,8 +77,11 @@ const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
 if (userCount.count === 0) {
   const hash = (pw) => bcrypt.hashSync(pw, 10);
   const ins = db.prepare('INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)');
-  ins.run('augusto', hash('admin123'), 'admin');
-  ins.run('socio', hash('socio123'), 'admin');
+  const adminPassword = process.env.ADMIN_PASSWORD || 'Cambiar2026!Admin';
+  const userPassword = process.env.USER_PASSWORD || 'Cambiar2026!User';
+  ins.run('augusto', hash(adminPassword), 'admin');
+  ins.run('socio', hash(userPassword), 'admin');
+  console.log('[db] Usuarios por defecto creados. Cambiá las contraseñas en el primer login.');
 }
 
 function getUserByUsername(username) {
@@ -141,6 +144,10 @@ function getFilesByCliente(clientId) {
   return db.prepare('SELECT * FROM files WHERE client_id = ? ORDER BY created_at DESC').all(clientId);
 }
 
+function getFileById(id) {
+  return db.prepare('SELECT * FROM files WHERE id = ?').get(id);
+}
+
 function deleteFile(id) {
   const f = db.prepare('SELECT * FROM files WHERE id = ?').get(id);
   if (f) {
@@ -177,6 +184,7 @@ module.exports = {
   registrarPago,
   saveFiles,
   getFilesByCliente,
+  getFileById,
   deleteFile,
   getDashboardStats
 };
