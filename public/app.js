@@ -521,11 +521,10 @@ async function renderConfig() {
             </div>
             <div id="creds-${c.id}" style="font-size:13px;background:var(--bg-input);padding:10px 14px;border-radius:8px;margin-bottom:12px;${c.panel_email ? '' : 'display:none;'}">
               <div>📧 ${escapeHtml(c.panel_email || '')}</div>
-              <div>🔑 ${escapeHtml(c.panel_password || '')}</div>
             </div>
             <div style="display:flex;gap:8px;">
-              <button class="btn btn-sm btn-primary" onclick="abrirPanelSetup('${c.id}', '${escapeHtml(c.empresa).replace(/'/g,"\\'")}', ${c.panel_id || 0})">🔑 Acceso</button>
-              <button class="btn btn-sm btn-success" data-email="${escapeHtml(c.panel_email || '')}" data-password="${escapeHtml(c.panel_password || '')}" onclick="abrirPanelCliente(this)">Ir al Panel</button>
+              <button class="btn btn-sm btn-primary" onclick="abrirPanelSetup('${c.id}', '${escapeHtml(c.empresa).replace(/'/g,"\\'")}', ${c.panel_id || 0})">🔑 ${c.panel_id ? 'Editar' : 'Acceso'}</button>
+              <button class="btn btn-sm btn-success" data-id="${c.id}" onclick="abrirPanelCliente(this)">Ir al Panel</button>
             </div>
           </div>
         `).join('')}
@@ -536,23 +535,25 @@ async function renderConfig() {
   }
 }
 
+let panelSetupState = { clientId: null, email: '', password: '' };
+
 function abrirPanelSetup(id, empresa, panelId) {
   const el = document.getElementById('ps-result');
   el.style.display = 'none';
+  panelSetupState = { clientId: id, email: '', password: '' };
   if (panelId) {
-    // Ya tiene panel: mostrar link directamente
     api(`/api/clientes/${id}`).then(c => {
       document.getElementById('ps-client-id').value = id;
-      document.getElementById('ps-email').value = c.panel_email;
-      document.getElementById('ps-password').value = c.panel_password;
-      document.getElementById('modal-panel-title').textContent = 'Acceso — ' + empresa;
+      document.getElementById('ps-email').value = c.panel_email || '';
+      document.getElementById('ps-password').value = '';
+      document.getElementById('modal-panel-title').textContent = 'Editar acceso — ' + empresa;
       document.getElementById('ps-footer').style.display = 'flex';
       openModal('modal-panel-setup');
-    });
+    }).catch(err => toast(err.message, 'error'));
   } else {
     document.getElementById('ps-client-id').value = id;
     document.getElementById('ps-email').value = empresa.toLowerCase().replace(/[^a-z0-9]/g,'') + '@panel.cliente';
-    document.getElementById('ps-password').value = 'panel123';
+    document.getElementById('ps-password').value = Math.random().toString(36).slice(2, 10);
     document.getElementById('modal-panel-title').textContent = 'Nuevo acceso — ' + empresa;
     document.getElementById('ps-footer').style.display = 'flex';
     openModal('modal-panel-setup');
@@ -563,28 +564,29 @@ async function savePanelSetup() {
   const clienteId = document.getElementById('ps-client-id').value;
   const email = document.getElementById('ps-email').value.trim();
   const password = document.getElementById('ps-password').value.trim();
-  if (!email || !password) { toast('Email y contraseña requeridos', 'error'); return; }
+  if (!email) { toast('Email requerido', 'error'); return; }
 
   const btn = document.querySelector('#modal-panel-setup .btn-primary');
   btn.disabled = true;
   try {
-    // Get current client data to check if panel exists
     const client = await api(`/api/clientes/${clienteId}`);
     let result;
     if (client.panel_id) {
       btn.textContent = 'Actualizando...';
-      result = await api(`/api/clientes/${clienteId}/panel`, { method: 'PUT', body: JSON.stringify({ email, password }) });
+      result = await api(`/api/clientes/${clienteId}/panel`, { method: 'PUT', body: JSON.stringify({ email }) });
+      panelSetupState = { clientId: clienteId, email: result.email || email, password: '' };
+      document.getElementById('ps-result-pass').textContent = '(sin cambios)';
     } else {
+      if (!password || password.length < 6) { toast('La contraseña debe tener al menos 6 caracteres', 'error'); btn.disabled = false; btn.textContent = 'Guardar'; return; }
       btn.textContent = 'Creando...';
       result = await api(`/api/clientes/${clienteId}/panel`, { method: 'POST', body: JSON.stringify({ email, password }) });
+      panelSetupState = { clientId: clienteId, email: result.email || email, password };
+      document.getElementById('ps-result-pass').textContent = password;
     }
 
     const link = window.PANEL_URL || 'https://panel-cliente-production.up.railway.app';
     document.getElementById('ps-result-email').textContent = result.email || email;
-    document.getElementById('ps-result-pass').textContent = password;
     document.getElementById('ps-result-link').textContent = link;
-    document.getElementById('ps-result-link').dataset.email = result.email || email;
-    document.getElementById('ps-result-link').dataset.password = password;
     document.getElementById('ps-result').style.display = 'block';
     document.getElementById('ps-footer').style.display = 'none';
     renderConfig();
@@ -594,24 +596,16 @@ async function savePanelSetup() {
   }
 }
 
-function abrirPanelCliente(btn) {
+async function abrirPanelCliente(btn) {
   const url = window.PANEL_URL || 'https://panel-cliente-production.up.railway.app';
-  const email = btn ? btn.dataset.email : '';
-  const password = btn ? btn.dataset.password : '';
-  if (email && password) {
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = url + '/auto-login';
-    form.target = '_blank';
-    form.style.display = 'none';
-    const iEmail = document.createElement('input'); iEmail.name = 'email'; iEmail.value = email;
-    const iPass = document.createElement('input'); iPass.name = 'password'; iPass.value = password;
-    form.appendChild(iEmail); form.appendChild(iPass);
-    document.body.appendChild(form);
-    form.submit();
-    setTimeout(() => form.remove(), 1000);
-  } else {
-    window.open(url, '_blank');
+  const id = btn ? btn.dataset.id : panelSetupState.clientId;
+  if (!id) { window.open(url, '_blank'); return; }
+  try {
+    const result = await api(`/api/clientes/${id}/panel-token`, { method: 'POST' });
+    if (!result.token) throw new Error('No se pudo generar el token de acceso');
+    window.open(`${url}/auto-login?token=${encodeURIComponent(result.token)}`, '_blank');
+  } catch (err) {
+    toast(err.message, 'error');
   }
 }
 

@@ -13,6 +13,12 @@ const db = new Database(dbPath);
 
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
+db.pragma('busy_timeout = 5000');
+
+function sanitizeText(input, maxLength = 2000) {
+  if (typeof input !== 'string') return '';
+  return input.trim().slice(0, maxLength);
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -66,22 +72,33 @@ db.exec(`
     created_at DATETIME DEFAULT (datetime('now', '-3 hours')),
     FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
   );
+
+  CREATE INDEX IF NOT EXISTS idx_clients_estado ON clients(estado);
+  CREATE INDEX IF NOT EXISTS idx_clients_created_at ON clients(created_at);
+  CREATE INDEX IF NOT EXISTS idx_payments_client_id ON payments(client_id);
+  CREATE INDEX IF NOT EXISTS idx_files_client_id ON files(client_id);
 `);
 
 // Migración: agregar columnas panel si no existen
 try { db.exec('ALTER TABLE clients ADD COLUMN panel_id INTEGER DEFAULT NULL'); } catch (e) {}
 try { db.exec('ALTER TABLE clients ADD COLUMN panel_email TEXT DEFAULT \'\''); } catch (e) {}
 try { db.exec('ALTER TABLE clients ADD COLUMN panel_password TEXT DEFAULT \'\''); } catch (e) {}
+// Limpieza de contraseñas de panel almacenadas en texto plano (ahora usamos token de autologin)
+try { db.exec("UPDATE clients SET panel_password = '' WHERE panel_password != ''"); } catch (e) {}
 
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
 if (userCount.count === 0) {
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  const userPassword = process.env.USER_PASSWORD;
+  if (!adminPassword || !userPassword) {
+    console.error('[db] FATAL: ADMIN_PASSWORD y USER_PASSWORD deben estar configurados para crear el usuario inicial.');
+    process.exit(1);
+  }
   const hash = (pw) => bcrypt.hashSync(pw, 10);
   const ins = db.prepare('INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)');
-  const adminPassword = process.env.ADMIN_PASSWORD || 'Cambiar2026!Admin';
-  const userPassword = process.env.USER_PASSWORD || 'Cambiar2026!User';
   ins.run('augusto', hash(adminPassword), 'admin');
   ins.run('socio', hash(userPassword), 'admin');
-  console.log('[db] Usuarios por defecto creados. Cambiá las contraseñas en el primer login.');
+  console.log('[db] Usuarios iniciales creados. Cambiá las contraseñas en el primer login.');
 }
 
 function getUserByUsername(username) {
@@ -126,8 +143,6 @@ function getPagosByCliente(clientId) {
 
 function registrarPago(clientId, monto, mesCorrespondiente) {
   db.prepare('INSERT INTO payments (client_id, monto, mes_correspondiente) VALUES (?, ?, ?)').run(clientId, monto, mesCorrespondiente);
-  const montoNum = parseFloat(monto);
-  db.prepare('UPDATE clients SET monto_mensual = ? WHERE id = ?').run(montoNum, clientId);
 }
 
 function saveFiles(files) {
@@ -166,8 +181,8 @@ function getDashboardStats() {
   return { clientesActivos, ingresosMensuales, clientesPorVencer, pagosPendientes, totalClientes };
 }
 
-function setClientePanel(id, panelId, panelEmail, panelPassword) {
-  db.prepare('UPDATE clients SET panel_id=?, panel_email=?, panel_password=? WHERE id=?').run(panelId, panelEmail, panelPassword, id);
+function setClientePanel(id, panelId, panelEmail) {
+  db.prepare('UPDATE clients SET panel_id=?, panel_email=? WHERE id=?').run(panelId, panelEmail, id);
 }
 
 module.exports = {

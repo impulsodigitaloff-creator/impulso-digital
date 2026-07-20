@@ -1,6 +1,11 @@
 node_modules/
 .env
+.env.local
 data/
-uploads/*
-!uploads/.gitkeep
 *.db
+*.db-shm
+*.db-wal
+uploads/
+logs/
+.DS_Store
+*.log
