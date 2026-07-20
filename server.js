@@ -378,24 +378,27 @@ app.post('/api/clientes/:id/panel', requireAuth, async (req, res) => {
   }
 });
 
-// Panel Cliente: actualizar email de acceso
+// Panel Cliente: actualizar email/password de acceso
 app.put('/api/clientes/:id/panel', requireAuth, async (req, res) => {
   const id = validateId(req.params.id);
   if (!id) return res.status(400).json({ error: 'ID inválido' });
   const cliente = db.getClienteById(id);
   if (!cliente) return res.status(404).json({ error: 'Cliente no encontrado' });
-  const { email } = req.body;
+  const { email, password } = req.body;
   if (!email) return res.status(400).json({ error: 'Email requerido' });
   if (!validateEmail(email)) return res.status(400).json({ error: 'Email inválido' });
+  if (password && password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
   // Si tiene panel_id, actualizar también en panelcliente
   if (cliente.panel_id) {
     try {
       const fetchUrl = process.env.PANEL_API_URL || 'http://localhost:3001';
       const apiKey = process.env.PANEL_API_KEY;
+      const body = { name: cliente.empresa, contact: cliente.contacto, phone: cliente.telefono || cliente.whatsapp, email };
+      if (password) body.password = password;
       const r = await fetch(`${fetchUrl}/api/businesses/${cliente.panel_id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
-        body: JSON.stringify({ name: cliente.empresa, contact: cliente.contacto, phone: cliente.telefono || cliente.whatsapp, email })
+        body: JSON.stringify(body)
       });
       if (!r.ok) {
         const text = await r.text();

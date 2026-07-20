@@ -537,3 +537,26 @@ tbody td .cliente-contacto { font-size: 11px; color: var(--text-muted); }
 .customer-info { flex: 1; }
 .customer-info .info-name { font-weight: 500; font-size: 14px; }
 .customer-info .info-sub { font-size: 11px; color: var(--text-muted); }
+
+/* CONFIG GRID (paneles cliente) */
+.config-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;
+}
+.config-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px;
+  transition: border-color var(--transition);
+}
+.config-card:hover { border-color: rgba(99,102,241,0.3); }
+.config-card .config-header {
+  display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;
+}
+.config-card .config-header strong { font-size: 15px; }
+.config-card .config-header .config-sub {
+  font-size: 12px; color: var(--text-muted); margin-top: 2px;
+}
+.config-card .config-creds {
+  font-size: 13px; background: var(--bg-input); padding: 10px 14px;
+  border-radius: var(--radius-sm); margin-bottom: 12px;
+}
+.config-card .config-actions { display: flex; gap: 8px; }

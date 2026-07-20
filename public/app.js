@@ -507,23 +507,23 @@ async function renderConfig() {
     const clients = await api('/api/clientes');
     el.innerHTML = `
       <h2 style="font-size:18px;font-weight:600;margin-bottom:16px;">📱 Gestión de Paneles Cliente</h2>
-      <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Generá links de acceso directo al panel para tus clientes.</p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;">
+      <p class="text-muted" style="margin-bottom:20px;">Generá links de acceso directo al panel para tus clientes.</p>
+      <div class="config-grid">
         ${clients.map(c => `
-          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;">
-            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
+          <div class="config-card">
+            <div class="config-header">
               <div>
-                <strong style="font-size:15px;">${escapeHtml(c.empresa)}</strong>
-                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${escapeHtml(c.contacto || '')} ${escapeHtml(c.telefono || '')}</div>
+                <strong>${escapeHtml(c.empresa)}</strong>
+                <div class="config-sub">${escapeHtml(c.contacto || '')} ${escapeHtml(c.telefono || '')}</div>
               </div>
               ${c.panel_id
-                ? '<span style="background:rgba(48,209,88,0.15);color:#30d158;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:500;">Panel activo</span>'
-                : '<span style="background:rgba(255,214,10,0.15);color:#ffd60a;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:500;">Sin panel</span>'}
+                ? '<span class="badge badge-completed">Panel activo</span>'
+                : '<span class="badge badge-pending">Sin panel</span>'}
             </div>
-            <div id="creds-${c.id}" style="font-size:13px;background:var(--bg-input);padding:10px 14px;border-radius:8px;margin-bottom:12px;${c.panel_email ? '' : 'display:none;'}">
+            <div class="config-creds" id="creds-${c.id}"${c.panel_email ? '' : ' style="display:none;"'}>
               <div>📧 ${escapeHtml(c.panel_email || '')}</div>
             </div>
-            <div style="display:flex;gap:8px;">
+            <div class="config-actions">
               <button class="btn btn-sm btn-primary" onclick="abrirPanelSetup('${c.id}', '${escapeHtml(c.empresa).replace(/'/g,"\\'")}', ${c.panel_id || 0})">🔑 ${c.panel_id ? 'Editar' : 'Acceso'}</button>
               <button class="btn btn-sm btn-success" data-id="${c.id}" onclick="abrirPanelCliente(this)">Ir al Panel</button>
             </div>
@@ -574,9 +574,9 @@ async function savePanelSetup() {
     let result;
     if (client.panel_id) {
       btn.textContent = 'Actualizando...';
-      result = await api(`/api/clientes/${clienteId}/panel`, { method: 'PUT', body: JSON.stringify({ email }) });
-      panelSetupState = { clientId: clienteId, email: result.email || email, password: '' };
-      document.getElementById('ps-result-pass').textContent = '(sin cambios)';
+      result = await api(`/api/clientes/${clienteId}/panel`, { method: 'PUT', body: JSON.stringify({ email, password: password || undefined }) });
+      panelSetupState = { clientId: clienteId, email: result.email || email, password: password || '(sin cambios)' };
+      document.getElementById('ps-result-pass').textContent = password || '(sin cambios)';
     } else {
       if (!password || password.length < 6) { toast('La contraseña debe tener al menos 6 caracteres', 'error'); btn.disabled = false; btn.textContent = 'Guardar'; return; }
       btn.textContent = 'Creando...';
