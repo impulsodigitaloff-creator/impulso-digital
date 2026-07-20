@@ -168,22 +168,22 @@
         </div>
       </form>
 
-      <div id="archivos-section" style="display:none; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
-        <h3 style="font-size:14px; font-weight:600; margin-bottom:12px;">Archivos Adjuntos</h3>
+      <div id="archivos-section" class="hidden" style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border);">
+        <h3 style="font-size:14px;font-weight:600;margin-bottom:10px;">Archivos Adjuntos</h3>
         <div id="files-list" class="files-list"></div>
-        <div style="margin-top:12px;">
+        <div style="margin-top:10px;">
           <input type="file" id="file-upload" multiple accept=".pdf,.jpg,.jpeg,.png,.gif,.svg" style="display:none">
           <button class="btn btn-sm btn-secondary" onclick="document.getElementById('file-upload').click()">Subir Archivos</button>
-          <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">PDF, JPG, PNG, GIF, SVG (máx 10MB c/u)</span>
+          <span class="text-muted" style="margin-left:8px;">PDF, JPG, PNG, GIF, SVG (máx 10MB c/u)</span>
         </div>
       </div>
 
-      <div id="pagos-section" style="display:none; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
-        <h3 style="font-size:14px; font-weight:600; margin-bottom:12px;">Historial de Pagos</h3>
+      <div id="pagos-section" class="hidden" style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border);">
+        <h3 style="font-size:14px;font-weight:600;margin-bottom:10px;">Historial de Pagos</h3>
         <div id="pagos-list" class="payments-list"></div>
-        <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
-          <input type="number" id="nuevo-pago-monto" placeholder="Monto $" style="padding:8px 12px; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; color:var(--text-primary); width:120px; font-size:13px;">
-          <input type="month" id="nuevo-pago-mes" style="padding:8px 12px; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; color:var(--text-primary); font-size:13px;">
+        <div class="flex-row" style="margin-top:10px;gap:8px;">
+          <input type="number" id="nuevo-pago-monto" placeholder="Monto $" class="input-sm" style="width:120px;">
+          <input type="month" id="nuevo-pago-mes" class="input-sm">
           <button class="btn btn-sm btn-success" onclick="registrarPago()">Registrar Pago</button>
         </div>
       </div>
@@ -215,14 +215,14 @@
           <input type="password" id="ps-password" required>
         </div>
       </div>
-      <div id="ps-result" style="display:none;margin-top:16px;background:rgba(48,209,88,0.1);border:1px solid rgba(48,209,88,0.3);border-radius:8px;padding:14px;">
-        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">✅ Acceso generado</div>
-        <div style="font-size:13px;margin-bottom:4px;"><strong>Email:</strong> <span id="ps-result-email"></span></div>
-        <div style="font-size:13px;margin-bottom:4px;"><strong>Contraseña:</strong> <span id="ps-result-pass"></span></div>
-        <div style="font-size:12px;color:var(--text-muted);margin:8px 0 12px;">
+      <div id="ps-result" class="hidden" style="margin-top:14px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:var(--radius-sm);padding:14px;">
+        <div style="font-weight:600;margin-bottom:8px;">✅ Acceso generado</div>
+        <div style="margin-bottom:3px;"><strong>Email:</strong> <span id="ps-result-email"></span></div>
+        <div style="margin-bottom:3px;"><strong>Contraseña:</strong> <span id="ps-result-pass"></span></div>
+        <div class="text-muted" style="margin:8px 0 10px;font-size:11px;">
           ⚠️ Guardá esta contraseña: no se almacena en el CRM por seguridad.
         </div>
-        <div style="font-size:13px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(48,209,88,0.2);">
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(34,197,94,0.2);">
           <strong>Link del panel:</strong><br>
           <span id="ps-result-link"></span>
         </div>
