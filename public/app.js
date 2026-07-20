@@ -293,7 +293,7 @@ function renderClientesTable(el) {
             <th>Acciones</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="clientes-tbody">
           ${rows || '<tr><td colspan="6"><div class="empty-state"><p>No se encontraron clientes</p></div></td></tr>'}
         </tbody>
       </table>
@@ -303,12 +303,67 @@ function renderClientesTable(el) {
 
 function buscarClientes() {
   currentSearch = document.getElementById('search-input').value;
-  renderClientesTable(document.getElementById('main-content'));
+  filtrarTablaClientes();
 }
 
 function filtrarClientes(estado) {
   currentFilter = estado;
   renderClientesTable(document.getElementById('main-content'));
+}
+
+function filtrarTablaClientes() {
+  const tbody = document.getElementById('clientes-tbody');
+  if (!tbody) return;
+  let data = state.clients;
+  if (currentFilter) data = data.filter(c => c.estado === currentFilter);
+  if (currentSearch) {
+    const s = currentSearch.toLowerCase();
+    data = data.filter(c =>
+      c.empresa.toLowerCase().includes(s) ||
+      c.contacto.toLowerCase().includes(s) ||
+      c.email.toLowerCase().includes(s) ||
+      c.dominio.toLowerCase().includes(s)
+    );
+  }
+  const fmt = (n) => '$' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+  const badgeEstado = (e) => {
+    const map = { Activo: 'badge-activo', Pendiente: 'badge-pendiente', Suspendido: 'badge-suspendido', Vencido: 'badge-vencido' };
+    return `<span class="badge ${map[e] || 'badge-pendiente'}">${e}</span>`;
+  };
+  const getAlert = (c) => {
+    if (c.estado !== 'Activo' || !c.fecha_vencimiento || c.proximoVencer === null || c.proximoVencer > 7) return '';
+    const d = c.proximoVencer;
+    if (d <= 0) return '<span style="color:var(--danger);font-size:11px;">🔴 Vencido</span>';
+    if (d <= 3) return `<span style="color:var(--danger);font-size:11px;">🔴 ${d}d</span>`;
+    return `<span style="color:var(--warning);font-size:11px;">🟡 ${d}d</span>`;
+  };
+  tbody.innerHTML = data.length
+    ? data.map(c => `
+    <tr>
+      <td>
+        <div class="cliente-info">
+          <span class="cliente-name">${escapeHtml(c.empresa)}</span>
+          <span class="cliente-contacto">${escapeHtml(c.contacto || c.email || c.dominio || 'Sin contacto')}</span>
+        </div>
+      </td>
+      <td>${badgeEstado(c.estado)}</td>
+      <td>${c.fecha_vencimiento ? escapeHtml(c.fecha_vencimiento) : '—'}${getAlert(c)}</td>
+      <td><span style="font-weight:500;">${fmt(c.monto_mensual)}</span></td>
+      <td><span style="font-size:12px;">${escapeHtml(c.responsable)}</span></td>
+      <td>
+        <div style="display:flex;gap:4px;">
+          <button class="btn btn-sm btn-secondary" onclick="editarCliente(${c.id})" title="Editar">✏️</button>
+          <button class="btn btn-sm btn-success" onclick="verPagos(${c.id})" title="Pagos">💰</button>
+          <button class="btn btn-sm btn-danger" onclick="eliminarCliente(${c.id})" title="Eliminar">🗑️</button>
+        </div>
+      </td>
+    </tr>
+  `).join('')
+    : '<tr><td colspan="6"><div class="empty-state"><p>No se encontraron clientes</p></div></td></tr>';
+  const vencidas = state.clients.filter(c => c.fecha_vencimiento && c.estado === 'Activo' && c.proximoVencer !== null && c.proximoVencer <= 7).length;
+  const badge = document.getElementById('clientes-badge');
+  if (vencidas > 0) { badge.textContent = vencidas; badge.style.display = ''; }
+  else badge.style.display = 'none';
 }
 
 // ==================== CRUD CLIENTES ====================
